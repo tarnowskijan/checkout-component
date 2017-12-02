@@ -12,7 +12,7 @@ import org.springframework.web.context.WebApplicationContext;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = Application.class)
-public class BaseIntegrationTest {
+public abstract class BaseIntegrationTest {
 
     @Autowired
     private WebApplicationContext webCxt;
