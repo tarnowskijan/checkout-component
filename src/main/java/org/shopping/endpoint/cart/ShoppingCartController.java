@@ -3,6 +3,7 @@ package org.shopping.endpoint.cart;
 import org.shopping.domain.cart.CartItem;
 import org.shopping.domain.cart.IShoppingCartService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Collection;
@@ -19,6 +20,7 @@ class ShoppingCartController {
     }
 
     @PostMapping(path = "/carts")
+    @ResponseStatus(HttpStatus.CREATED)
     String createCart() {
         return shoppingCartService.createCart();
     }
