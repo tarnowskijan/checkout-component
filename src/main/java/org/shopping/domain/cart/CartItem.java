@@ -32,7 +32,7 @@ public class CartItem {
         return quantity > 0;
     }
 
-    static CartItem create(Product product, int quantity) {
+    public static CartItem create(Product product, int quantity) {
         return new CartItem(requireNonNull(product), adjustQuantity(quantity));
     }
 
