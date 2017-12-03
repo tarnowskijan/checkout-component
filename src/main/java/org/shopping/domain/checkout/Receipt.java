@@ -1,9 +1,7 @@
 package org.shopping.domain.checkout;
 
-import org.shopping.domain.cart.CartItem;
-
-import javax.money.MonetaryAmount;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -19,9 +17,7 @@ public class Receipt {
         return Collections.unmodifiableList(items);
     }
 
-    void registerItem(CartItem cartItem, ProductPricing pricing) {
-        MonetaryAmount value = pricing.getPrice().multiply(cartItem.getQuantity());
-        ReceiptItem item = new ReceiptItem(cartItem.getProduct(), cartItem.getQuantity(), value);
-        items.add(item);
+    void addItems(Collection<ReceiptItem> items) {
+        this.items.addAll(items);
     }
 }

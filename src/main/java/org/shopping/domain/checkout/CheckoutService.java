@@ -6,42 +6,73 @@ import org.shopping.domain.cart.Product;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.Collection;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.util.function.Function.identity;
+import static java.util.stream.Collectors.toMap;
 
 @Service
 class CheckoutService implements ICheckoutService {
 
     private final IShoppingCartService shoppingCartService;
     private final IProductPricingRepository productPricingRepository;
+    private final DiscountEvaluationService discountEvaluationService;
 
     @Autowired
-    CheckoutService(IShoppingCartService shoppingCartService, IProductPricingRepository productPricingRepository) {
+    CheckoutService(IShoppingCartService shoppingCartService, IProductPricingRepository productPricingRepository,
+                    DiscountEvaluationService discountEvaluationService) {
         this.shoppingCartService = shoppingCartService;
         this.productPricingRepository = productPricingRepository;
+        this.discountEvaluationService = discountEvaluationService;
     }
 
     @Override
     public Receipt checkout(String shoppingCartId) {
-        Collection<CartItem> cartItems = shoppingCartService.getItems(shoppingCartId);
-        Map<Product, ProductPricing> priceByProduct = getProductPrices(cartItems);
-        return createReceipt(cartItems, priceByProduct);
+        Map<Product, CartItem> cartItemsByProduct = getCartItems(shoppingCartId);
+        List<ReceiptItem> discountedReceiptItems = discountEvaluationService.evaluate(cartItemsByProduct.values());
+        decreaseQuantityOfDiscountedItems(cartItemsByProduct, discountedReceiptItems);
+        List<ReceiptItem> standardReceiptItems = evaluateStandardPrices(cartItemsByProduct);
+        return createReceipt(discountedReceiptItems, standardReceiptItems);
     }
 
-    private Map<Product, ProductPricing> getProductPrices(Collection<CartItem> cartItems) {
-        return cartItems.stream().map(CartItem::getProduct).collect(Collectors.toMap(identity(),
-                productPricingRepository::findByProduct));
+    private Map<Product, CartItem> getCartItems(String shoppingCartId) {
+        return shoppingCartService.getItems(shoppingCartId).stream().collect(toMap(CartItem::getProduct, identity()));
     }
 
-    private Receipt createReceipt(Collection<CartItem> cartItems, Map<Product, ProductPricing> priceByProduct) {
+    private void decreaseQuantityOfDiscountedItems(Map<Product, CartItem> cartItemsByProduct, List<ReceiptItem> discountedReceiptItems) {
+        discountedReceiptItems.forEach(receiptItem -> decreaseQuantity(receiptItem, cartItemsByProduct));
+    }
+
+    private void decreaseQuantity(ReceiptItem receiptItem, Map<Product, CartItem> cartItemsByProduct) {
+        Product product = receiptItem.getProduct();
+        CartItem cartItem = cartItemsByProduct.get(product);
+        CartItem unevaluatedItem = cartItem.withDecreasedQuantity(receiptItem.getQuantity());
+        if (unevaluatedItem.isNotEmpty()) {
+            cartItemsByProduct.put(product, unevaluatedItem);
+        } else {
+            cartItemsByProduct.remove(product);
+        }
+    }
+
+    private List<ReceiptItem> evaluateStandardPrices(Map<Product, CartItem> cartItemsByProduct) {
+        Map<Product, ProductPricing> priceByProduct = getProductPrices(cartItemsByProduct.keySet());
+        return cartItemsByProduct.values().stream().map((item) -> toReceiptItem(item, priceByProduct.get(item.getProduct())))
+                .collect(Collectors.toList());
+    }
+
+    private ReceiptItem toReceiptItem(CartItem item, ProductPricing productPricing) {
+        return new ReceiptItem(item.getProduct(), item.getQuantity(), productPricing.getPrice().multiply(item.getQuantity()));
+    }
+
+    private Map<Product, ProductPricing> getProductPrices(Set<Product> products) {
+        return products.stream().collect(toMap(identity(), productPricingRepository::findByProduct));
+    }
+
+    private Receipt createReceipt(List<ReceiptItem> discountedReceiptItems, List<ReceiptItem> standardReceiptItems) {
         Receipt receipt = new Receipt();
-        cartItems.forEach(item -> {
-            Product product = item.getProduct();
-            receipt.registerItem(item, priceByProduct.get(product));
-        });
+        receipt.addItems(discountedReceiptItems);
+        receipt.addItems(standardReceiptItems);
         return receipt;
     }
 }

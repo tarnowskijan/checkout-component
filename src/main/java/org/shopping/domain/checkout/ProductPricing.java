@@ -10,7 +10,7 @@ public class ProductPricing {
         this.price = price;
     }
 
-    MonetaryAmount getPrice() {
+    public MonetaryAmount getPrice() {
         return price;
     }
 }

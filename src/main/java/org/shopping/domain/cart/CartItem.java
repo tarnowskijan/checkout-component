@@ -24,11 +24,11 @@ public class CartItem {
         return create(this.product, this.quantity + quantity);
     }
 
-    CartItem withDecreasedQuantity(int quantity) {
+    public CartItem withDecreasedQuantity(int quantity) {
         return create(this.product, this.quantity - quantity);
     }
 
-    boolean isNotEmpty() {
+    public boolean isNotEmpty() {
         return quantity > 0;
     }
 
