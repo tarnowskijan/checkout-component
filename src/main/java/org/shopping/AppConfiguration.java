@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootConfiguration
-@ComponentScan({"org.shopping.domain.cart", "org.shopping.controller", "org.shopping.infrastructure"})
+@ComponentScan({"org.shopping.domain.cart", "org.shopping.domain.checkout", "org.shopping.controller", "org.shopping.infrastructure"})
 class AppConfiguration {
 
     @Bean
