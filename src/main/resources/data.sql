@@ -13,3 +13,9 @@ insert into PRODUCT_PRICING values
     ('eggs', '3.00', 'USD'),
     ('bread', '1.5', 'USD'),
     ('coffee', '5.50', 'USD');
+
+insert into SPECIAL_PRICE_SINGLE_PRODUCT_DISCOUNT values
+    ('milk', '5', '4.9', 'USD'),
+    ('sugar', '10', '20', 'USD'),
+    ('bread', '3', '3.99', 'USD'),
+    ('coffee', '100', '480', 'USD');
