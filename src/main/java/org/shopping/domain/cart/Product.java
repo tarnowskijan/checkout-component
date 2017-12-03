@@ -1,5 +1,7 @@
 package org.shopping.domain.cart;
 
+import java.util.Objects;
+
 public class Product {
 
     private final String id;
@@ -16,5 +18,18 @@ public class Product {
 
     public String getName() {
         return name;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Product product = (Product) o;
+        return Objects.equals(id, product.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 }
