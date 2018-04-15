@@ -11,22 +11,22 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>1.5.9.RELEASE</version>
+        <version>1.5.11.RELEASE</version>
     </parent>
 
     <properties>
         <compiler.source>1.8</compiler.source>
         <compiler.target>1.8</compiler.target>
-        <springframework.version>4.3.13.RELEASE</springframework.version>
+        <springframework.version>4.3.16.RELEASE</springframework.version>
         <moneta.version>1.1</moneta.version>
         <postgresql.version>42.1.4</postgresql.version>
         <junit.version>4.12</junit.version>
-        <maven-surefire-plugin.version>2.20</maven-surefire-plugin.version>
-        <mockito-core.version>2.9.0</mockito-core.version>
-        <guava.version>23.5-jre</guava.version>
-        <assertj-core.version>3.8.0</assertj-core.version>
-        <cucumber.version>1.2.4</cucumber.version>
-        <httpclient.version>4.5.2</httpclient.version>
+        <maven-surefire-plugin.version>2.21.0</maven-surefire-plugin.version>
+        <mockito-core.version>2.18.0</mockito-core.version>
+        <guava.version>24.1-jre</guava.version>
+        <assertj-core.version>3.9.1</assertj-core.version>
+        <cucumber.version>1.2.5</cucumber.version>
+        <httpclient.version>4.5.5</httpclient.version>
     </properties>
 
     <build>
