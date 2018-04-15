@@ -1,5 +1,7 @@
 package org.shopping.domain.checkout;
 
+import org.shopping.domain.cart.ShoppingCart;
+
 public interface ICheckoutService {
-    Receipt checkout(String shoppingCartId);
+    Receipt checkout(ShoppingCart shoppingCart);
 }

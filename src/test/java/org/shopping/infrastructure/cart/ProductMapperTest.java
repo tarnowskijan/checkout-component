@@ -3,7 +3,6 @@ package org.shopping.infrastructure.cart;
 import org.junit.Before;
 import org.junit.Test;
 import org.shopping.domain.cart.Product;
-import org.shopping.domain.cart.ProductFactory;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -22,7 +21,7 @@ public class ProductMapperTest {
 
     @Before
     public void setUp() {
-        productMapper = new ProductMapper(new ProductFactory());
+        productMapper = new ProductMapper();
     }
 
     @Test

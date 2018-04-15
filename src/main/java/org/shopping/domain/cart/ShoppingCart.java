@@ -18,7 +18,7 @@ public class ShoppingCart {
         return id;
     }
 
-    void addItem(Product product, int quantity) {
+    public void addItem(Product product, int quantity) {
         Optional<CartItem> existingItem = findItemForProduct(product);
         CartItem item = existingItem
                 .map(i -> i.withIncreasedQuantity(quantity))
@@ -26,13 +26,13 @@ public class ShoppingCart {
         saveItem(item);
     }
 
-    void removeItem(Product product, int quantity) {
+    public void removeItem(Product product, int quantity) {
         findItemForProduct(product)
                 .map(i -> i.withDecreasedQuantity(quantity))
                 .ifPresent(this::saveItem);
     }
 
-    Collection<CartItem> getItems() {
+    public Collection<CartItem> getItems() {
         return unmodifiableCollection(itemsByProductId.values());
     }
 

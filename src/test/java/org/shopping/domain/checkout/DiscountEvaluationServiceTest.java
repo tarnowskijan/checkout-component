@@ -21,8 +21,8 @@ import static org.mockito.Mockito.mock;
 
 public class DiscountEvaluationServiceTest {
 
-    private static final Product MILK = new ProductFactory().create("milk", "Milk");
-    private static final Product SUGAR = new ProductFactory().create("sugar", "Sugar");
+    private static final Product MILK = ProductFactory.create("milk", "Milk");
+    private static final Product SUGAR = ProductFactory.create("sugar", "Sugar");
 
     private DiscountEvaluationService discountEvaluationService;
     private ISingleProductDiscountPolicyRepository singleProductDiscountPolicyRepository;

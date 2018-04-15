@@ -1,7 +1,6 @@
 package org.shopping.endpoint.cart;
 
 import org.shopping.domain.cart.CartItem;
-import org.shopping.domain.cart.IShoppingCartService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -12,10 +11,10 @@ import java.util.stream.Collectors;
 @RestController
 class ShoppingCartController {
 
-    private final IShoppingCartService shoppingCartService;
+    private final ShoppingCartApplicationService shoppingCartService;
 
     @Autowired
-    ShoppingCartController(IShoppingCartService shoppingCartService) {
+    ShoppingCartController(ShoppingCartApplicationService shoppingCartService) {
         this.shoppingCartService = shoppingCartService;
     }
 

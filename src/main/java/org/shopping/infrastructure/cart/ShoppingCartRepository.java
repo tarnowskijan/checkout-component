@@ -4,6 +4,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import org.shopping.domain.cart.IShoppingCartRepository;
 import org.shopping.domain.cart.ShoppingCart;
+import org.shopping.domain.cart.ShoppingCartNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
@@ -26,8 +27,9 @@ class ShoppingCartRepository implements IShoppingCartRepository {
     }
 
     @Override
-    public Optional<ShoppingCart> findById(String cartId) {
-        return Optional.ofNullable(carts.getIfPresent(cartId));
+    public ShoppingCart findById(String cartId) throws ShoppingCartNotFoundException {
+        return Optional.ofNullable(carts.getIfPresent(cartId))
+                .orElseThrow(ShoppingCartNotFoundException::new);
     }
 
     @Override

@@ -1,9 +1,7 @@
 package org.shopping.domain.cart;
 
-import java.util.Optional;
-
 public interface IShoppingCartRepository {
-    Optional<ShoppingCart> findById(String cartId);
+    ShoppingCart findById(String cartId) throws ShoppingCartNotFoundException;
 
     void save(ShoppingCart cart);
 }

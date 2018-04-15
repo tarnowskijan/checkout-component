@@ -1,10 +1,10 @@
-package org.shopping.domain.cart;
+package org.shopping.endpoint.cart;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.shopping.domain.cart.*;
 
 import java.util.Collection;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -14,12 +14,13 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-public class ShoppingCartServiceTest {
+public class ShoppingCartApplicationServiceTest {
 
-    private static final String CART_ID = "cartId";
-    private static final Product PRODUCT = new Product("productId", "name");
+    private static final Product PRODUCT = ProductFactory.create("productId", "name");
+    private static final String MISSING_CART_ID = "missing";
+    private static final String MISSING_PRODUCT_ID = "missing_product";
 
-    private ShoppingCartService shoppingCartService;
+    private ShoppingCartApplicationService shoppingCartApplicationService;
     private IShoppingCartRepository shoppingCartRepository;
     private ShoppingCart shoppingCart;
 
@@ -27,18 +28,19 @@ public class ShoppingCartServiceTest {
     public void setUp() {
         shoppingCartRepository = mock(IShoppingCartRepository.class);
         IProductRepository productRepository = mock(IProductRepository.class);
-        ShoppingCartFactory shoppingCartFactory = new ShoppingCartFactory();
-        shoppingCartService = new ShoppingCartService(shoppingCartFactory, shoppingCartRepository, productRepository);
+        shoppingCartApplicationService = new ShoppingCartApplicationService(shoppingCartRepository, productRepository);
 
-        shoppingCart = new ShoppingCart(CART_ID);
-        given(shoppingCartRepository.findById(eq(CART_ID))).willReturn(Optional.of(shoppingCart));
-        given(productRepository.findById(eq(PRODUCT.getId()))).willReturn(Optional.of(PRODUCT));
+        shoppingCart = ShoppingCartFactory.create();
+        given(shoppingCartRepository.findById(eq(shoppingCart.getId()))).willReturn(shoppingCart);
+        given(shoppingCartRepository.findById(eq(MISSING_CART_ID))).willThrow(new ShoppingCartNotFoundException());
+        given(productRepository.findById(eq(PRODUCT.getId()))).willReturn(PRODUCT);
+        given(productRepository.findById(eq(MISSING_PRODUCT_ID))).willThrow(new ProductNotFoundException());
     }
 
     @Test
     public void shouldCreateEmptyCart() {
         // WHEN
-        shoppingCartService.createCart();
+        shoppingCartApplicationService.createCart();
 
         // THEN
         verify(shoppingCartRepository).save(argThat(cart -> {
@@ -51,7 +53,7 @@ public class ShoppingCartServiceTest {
     @Test
     public void shouldReturnIdOfCreatedCart() {
         // WHEN
-        String id = shoppingCartService.createCart();
+        String id = shoppingCartApplicationService.createCart();
 
         // THEN
         verify(shoppingCartRepository).save(argThat(cart -> {
@@ -64,7 +66,7 @@ public class ShoppingCartServiceTest {
     public void shouldAddItemsToCart() {
         // WHEN
         int quantity = 1;
-        shoppingCartService.addItem(CART_ID, PRODUCT.getId(), quantity);
+        shoppingCartApplicationService.addItem(shoppingCart.getId(), PRODUCT.getId(), quantity);
 
         // THEN
         assertThat(shoppingCart.getItems()).hasSize(1)
@@ -79,8 +81,8 @@ public class ShoppingCartServiceTest {
         // WHEN
         int quantity = 2;
         int remainingQuantity = 1;
-        shoppingCartService.addItem(CART_ID, PRODUCT.getId(), quantity);
-        shoppingCartService.removeItem(CART_ID, PRODUCT.getId(), remainingQuantity);
+        shoppingCartApplicationService.addItem(shoppingCart.getId(), PRODUCT.getId(), quantity);
+        shoppingCartApplicationService.removeItem(shoppingCart.getId(), PRODUCT.getId(), remainingQuantity);
 
         // THEN
         assertThat(shoppingCart.getItems()).hasSize(1)
@@ -93,10 +95,10 @@ public class ShoppingCartServiceTest {
     @Test
     public void shouldGetItemsFromCart() {
         // GIVEN
-        shoppingCartService.addItem(CART_ID, PRODUCT.getId(), 1);
+        shoppingCartApplicationService.addItem(shoppingCart.getId(), PRODUCT.getId(), 1);
 
         // WHEN
-        Collection<CartItem> items = shoppingCartService.getItems(CART_ID);
+        Collection<CartItem> items = shoppingCartApplicationService.getItems(shoppingCart.getId());
 
         // THEN
         assertThat(items).hasSize(1);
@@ -104,41 +106,29 @@ public class ShoppingCartServiceTest {
 
     @Test
     public void shouldThrowExceptionWhenAddingToMissingCart() {
-        // GIVEN
-        String missingCartId = "missing";
-
         // WHEN - THEN
-        assertThatThrownBy(() -> shoppingCartService.addItem(missingCartId, PRODUCT.getId(), 1))
+        assertThatThrownBy(() -> shoppingCartApplicationService.addItem(MISSING_CART_ID, PRODUCT.getId(), 1))
                 .isInstanceOf(ShoppingCartNotFoundException.class);
     }
 
     @Test
     public void shouldThrowExceptionWhenRemovingFromMissingCart() {
-        // GIVEN
-        String missingCartId = "missing";
-
         // WHEN - THEN
-        assertThatThrownBy(() -> shoppingCartService.removeItem(missingCartId, PRODUCT.getId(), 1))
+        assertThatThrownBy(() -> shoppingCartApplicationService.removeItem(MISSING_CART_ID, PRODUCT.getId(), 1))
                 .isInstanceOf(ShoppingCartNotFoundException.class);
     }
 
     @Test
     public void shouldThrowExceptionWhenAddingMissingProduct() {
-        // GIVEN
-        String missingProductId = "missing";
-
         // WHEN - THEN
-        assertThatThrownBy(() -> shoppingCartService.addItem(CART_ID, missingProductId, 1))
+        assertThatThrownBy(() -> shoppingCartApplicationService.addItem(shoppingCart.getId(), MISSING_PRODUCT_ID, 1))
                 .isInstanceOf(ProductNotFoundException.class);
     }
 
     @Test
     public void shouldThrowExceptionWhenRemovingMissingProduct() {
-        // GIVEN
-        String missingProductId = "missing";
-
         // WHEN - THEN
-        assertThatThrownBy(() -> shoppingCartService.removeItem(CART_ID, missingProductId, 1))
+        assertThatThrownBy(() -> shoppingCartApplicationService.removeItem(shoppingCart.getId(), MISSING_PRODUCT_ID, 1))
                 .isInstanceOf(ProductNotFoundException.class);
     }
 
@@ -148,7 +138,7 @@ public class ShoppingCartServiceTest {
         String missingCartId = "missing";
 
         // WHEN - THEN
-        assertThatThrownBy(() -> shoppingCartService.getItems(missingCartId))
+        assertThatThrownBy(() -> shoppingCartApplicationService.getItems(missingCartId))
                 .isInstanceOf(ShoppingCartNotFoundException.class);
     }
 }

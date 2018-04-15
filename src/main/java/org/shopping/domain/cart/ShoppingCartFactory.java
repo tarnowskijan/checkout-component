@@ -1,13 +1,13 @@
 package org.shopping.domain.cart;
 
-import org.springframework.stereotype.Component;
-
 import java.util.UUID;
 
-@Component
-class ShoppingCartFactory {
+public final class ShoppingCartFactory {
 
-    ShoppingCart create() {
+    private ShoppingCartFactory() {
+    }
+
+    public static ShoppingCart create() {
         String cartId = UUID.randomUUID().toString();
         return new ShoppingCart(cartId);
     }

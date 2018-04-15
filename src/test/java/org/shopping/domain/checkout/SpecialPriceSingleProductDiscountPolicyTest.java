@@ -19,12 +19,11 @@ public class SpecialPriceSingleProductDiscountPolicyTest {
 
     private SpecialPriceSingleProductDiscountPolicy specialPriceSingleProductDiscountPolicy;
     private Product applicableProduct;
-    private final ProductFactory productFactory = new ProductFactory();
 
     @Before
     public void setUp() {
         specialPriceSingleProductDiscountPolicy = new SpecialPriceSingleProductDiscountPolicy(APPLICABLE_PRODUCT_ID, APPLICABLE_QUANTITY, SPECIAL_PRICE);
-        applicableProduct = productFactory.create(APPLICABLE_PRODUCT_ID, "");
+        applicableProduct = ProductFactory.create(APPLICABLE_PRODUCT_ID, "");
     }
 
     @Test
@@ -66,7 +65,7 @@ public class SpecialPriceSingleProductDiscountPolicyTest {
     @Test
     public void shouldNotBeApplicableForCartItemWithoutMatchingProductId() {
         // GIVEN
-        Product product = productFactory.create("not_applicable", "");
+        Product product = ProductFactory.create("not_applicable", "");
         CartItem cartItem = CartItem.create(product, APPLICABLE_QUANTITY);
 
         // WHEN

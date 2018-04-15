@@ -1,8 +1,8 @@
 package org.shopping.domain.checkout;
 
 import org.shopping.domain.cart.CartItem;
-import org.shopping.domain.cart.IShoppingCartService;
 import org.shopping.domain.cart.Product;
+import org.shopping.domain.cart.ShoppingCart;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -15,29 +15,27 @@ import static java.util.stream.Collectors.toMap;
 @Service
 class CheckoutService implements ICheckoutService {
 
-    private final IShoppingCartService shoppingCartService;
     private final IProductPricingRepository productPricingRepository;
     private final DiscountEvaluationService discountEvaluationService;
 
     @Autowired
-    CheckoutService(IShoppingCartService shoppingCartService, IProductPricingRepository productPricingRepository,
+    CheckoutService(IProductPricingRepository productPricingRepository,
                     DiscountEvaluationService discountEvaluationService) {
-        this.shoppingCartService = shoppingCartService;
         this.productPricingRepository = productPricingRepository;
         this.discountEvaluationService = discountEvaluationService;
     }
 
     @Override
-    public Receipt checkout(String shoppingCartId) {
-        Map<Product, CartItem> cartItemsByProduct = getCartItems(shoppingCartId);
+    public Receipt checkout(ShoppingCart shoppingCart) {
+        Map<Product, CartItem> cartItemsByProduct = getCartItems(shoppingCart);
         List<ReceiptItem> discountedReceiptItems = discountEvaluationService.evaluate(cartItemsByProduct.values());
         decreaseQuantityOfDiscountedItems(cartItemsByProduct, discountedReceiptItems);
         List<ReceiptItem> standardReceiptItems = evaluateStandardPrices(cartItemsByProduct);
         return createReceipt(discountedReceiptItems, standardReceiptItems);
     }
 
-    private Map<Product, CartItem> getCartItems(String shoppingCartId) {
-        return shoppingCartService.getItems(shoppingCartId).stream().collect(toMap(CartItem::getProduct, identity()));
+    private Map<Product, CartItem> getCartItems(ShoppingCart shoppingCart) {
+        return shoppingCart.getItems().stream().collect(toMap(CartItem::getProduct, identity()));
     }
 
     private void decreaseQuantityOfDiscountedItems(Map<Product, CartItem> cartItemsByProduct, List<ReceiptItem> discountedReceiptItems) {

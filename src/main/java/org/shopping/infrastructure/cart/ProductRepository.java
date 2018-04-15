@@ -2,13 +2,13 @@ package org.shopping.infrastructure.cart;
 
 import org.shopping.domain.cart.IProductRepository;
 import org.shopping.domain.cart.Product;
+import org.shopping.domain.cart.ProductNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
-import java.util.Optional;
 
 @Repository
 class ProductRepository implements IProductRepository {
@@ -25,12 +25,11 @@ class ProductRepository implements IProductRepository {
     }
 
     @Override
-    public Optional<Product> findById(String productId) {
+    public Product findById(String productId) throws ProductNotFoundException {
         try {
-            Product product = jdbcTemplate.queryForObject(SELECT_PRODUCT_BY_ID_QUERY, productMapper, productId);
-            return Optional.of(product);
+            return jdbcTemplate.queryForObject(SELECT_PRODUCT_BY_ID_QUERY, productMapper, productId);
         } catch (EmptyResultDataAccessException e) {
-            return Optional.empty();
+            throw new ProductNotFoundException();
         }
     }
 }
