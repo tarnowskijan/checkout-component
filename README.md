@@ -8,11 +8,6 @@ Domain-centric with two supporting layers. The infrastructure layer provides acc
 mvn test
 ```
 
-### Running acceptance tests
-```
-mvn test -PACCEPTANCE_TESTS
-```
-
 ### Running application
 ```
 mvn package
