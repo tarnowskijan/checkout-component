@@ -1,15 +1,17 @@
 package org.shopping.domain.checkout;
 
-import org.springframework.stereotype.Component;
-
 import javax.money.MonetaryAmount;
 
 import static java.util.Objects.requireNonNull;
 
-@Component
-public class SpecialPriceSingleProductDiscountPolicyFactory {
+public final class SpecialPriceSingleProductDiscountPolicyFactory {
 
-    public SpecialPriceSingleProductDiscountPolicy create(String applicableProductId, int applicableQuantity, MonetaryAmount specialPrice) {
-        return new SpecialPriceSingleProductDiscountPolicy(requireNonNull(applicableProductId), applicableQuantity, requireNonNull(specialPrice));
+    private SpecialPriceSingleProductDiscountPolicyFactory() {
+    }
+
+    public static SpecialPriceSingleProductDiscountPolicy create(String applicableProductId, int applicableQuantity,
+                                                                 MonetaryAmount specialPrice) {
+        return new SpecialPriceSingleProductDiscountPolicy(requireNonNull(applicableProductId), applicableQuantity,
+                requireNonNull(specialPrice));
     }
 }

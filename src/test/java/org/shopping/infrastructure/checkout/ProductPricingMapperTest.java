@@ -4,7 +4,6 @@ import org.javamoney.moneta.Money;
 import org.junit.Before;
 import org.junit.Test;
 import org.shopping.domain.checkout.ProductPricing;
-import org.shopping.domain.checkout.ProductPricingFactory;
 
 import java.math.BigDecimal;
 import java.sql.ResultSet;
@@ -24,7 +23,7 @@ public class ProductPricingMapperTest {
 
     @Before
     public void setUp() {
-        productPricingMapper = new ProductPricingMapper(new ProductPricingFactory());
+        productPricingMapper = new ProductPricingMapper();
     }
 
     @Test
