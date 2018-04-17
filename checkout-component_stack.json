@@ -1,0 +1,693 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Parameters": {
+    "KeyName": {
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "Description": "Name of an existing EC2 KeyPair to enable SSH access to the ECS instances."
+    },
+    "DesiredCapacity": {
+      "Type": "Number",
+      "Default": "1",
+      "Description": "Number of instances to launch in your ECS cluster."
+    },
+    "MaxSize": {
+      "Type": "Number",
+      "Default": "1",
+      "Description": "Maximum number of instances that can be launched in your ECS cluster."
+    },
+    "InstanceType": {
+      "Description": "EC2 instance type",
+      "Type": "String",
+      "Default": "t2.micro",
+      "AllowedValues": [
+        "t2.micro",
+        "t2.small",
+        "t2.medium",
+        "t2.large",
+        "m3.medium"
+      ],
+      "ConstraintDescription": "Please choose a valid instance type."
+    }
+  },
+  "Mappings": {
+    "AWSRegionToAMI": {
+      "eu-central-1": {
+        "AMIID": "ami-ac055447"
+      }
+    }
+  },
+  "Resources": {
+    "CheckoutComponentVpc": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": "192.168.0.0/16"
+      }
+    },
+    "CheckoutComponentVpcSubnet1": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": "192.168.1.0/24",
+        "VpcId": {
+          "Ref": "CheckoutComponentVpc"
+        },
+        "AvailabilityZone": {
+          "Fn::Select": [
+            "0",
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        }
+      }
+    },
+    "CheckoutComponentVpcSubnet2": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": "192.168.2.0/24",
+        "VpcId": {
+          "Ref": "CheckoutComponentVpc"
+        },
+        "AvailabilityZone": {
+          "Fn::Select": [
+            "1",
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        }
+      }
+    },
+    "CheckoutComponentVpcInternetGateway": {
+      "Type": "AWS::EC2::InternetGateway"
+    },
+    "CheckoutComponentVpcInternetGatewayAttachment": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "InternetGatewayId": {
+          "Ref": "CheckoutComponentVpcInternetGateway"
+        },
+        "VpcId": {
+          "Ref": "CheckoutComponentVpc"
+        }
+      }
+    },
+    "CheckoutComponentVpcRouteTable": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "CheckoutComponentVpc"
+        }
+      }
+    },
+    "CheckoutComponentVpcRouteTableRouteToInternetGateway": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "CheckoutComponentVpcRouteTable"
+        },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "CheckoutComponentVpcInternetGateway"
+        }
+      }
+    },
+    "CheckoutComponentVpcRouteTableAssociationSubnet1": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "CheckoutComponentVpcRouteTable"
+        },
+        "SubnetId": {
+          "Ref": "CheckoutComponentVpcSubnet1"
+        }
+      }
+    },
+    "CheckoutComponentVpcRouteTableAssociationSubnet2": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "CheckoutComponentVpcRouteTable"
+        },
+        "SubnetId": {
+          "Ref": "CheckoutComponentVpcSubnet2"
+        }
+      }
+    },
+    "CheckoutComponentEcsCluster": {
+      "Type": "AWS::ECS::Cluster"
+    },
+    "CheckoutComponentEcsSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "ECS Security Group",
+        "VpcId": {
+          "Ref": "CheckoutComponentVpc"
+        }
+      }
+    },
+    "CheckoutComponentEcsSecurityGroupHttpInbound": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "CheckoutComponentEcsSecurityGroup"
+        },
+        "IpProtocol": "tcp",
+        "FromPort": "80",
+        "ToPort": "80",
+        "CidrIp": "0.0.0.0/0"
+      }
+    },
+    "CheckoutComponentEcsSecurityGroupSshInbound": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "CheckoutComponentEcsSecurityGroup"
+        },
+        "IpProtocol": "tcp",
+        "FromPort": "22",
+        "ToPort": "22",
+        "CidrIp": "0.0.0.0/0"
+      }
+    },
+    "CheckoutComponentEcsSecurityGroupAlbPorts": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "CheckoutComponentEcsSecurityGroup"
+        },
+        "IpProtocol": "tcp",
+        "FromPort": "31000",
+        "ToPort": "61000",
+        "SourceSecurityGroupId": {
+          "Ref": "CheckoutComponentEcsSecurityGroup"
+        }
+      }
+    },
+    "CheckoutComponentCloudwatchLogsGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Join": [
+            "-",
+            [
+              "CheckoutComponentEcsLogsGroup",
+              {
+                "Ref": "AWS::StackName"
+              }
+            ]
+          ]
+        },
+        "RetentionInDays": 14
+      }
+    },
+    "CheckoutComponentTaskDefinition": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "Family": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "AWS::StackName"
+              },
+              "-checkout-component-app"
+            ]
+          ]
+        },
+        "ContainerDefinitions": [
+          {
+            "Name": "checkout-component-app",
+            "Cpu": "256",
+            "Essential": "true",
+            "Image": "666680944018.dkr.ecr.eu-central-1.amazonaws.com/checkout-component:latest",
+            "Memory": "256",
+            "LogConfiguration": {
+              "LogDriver": "awslogs",
+              "Options": {
+                "awslogs-group": {
+                  "Ref": "CheckoutComponentCloudwatchLogsGroup"
+                },
+                "awslogs-region": {
+                  "Ref": "AWS::Region"
+                },
+                "awslogs-stream-prefix": "checkout-component-app"
+              }
+            },
+            "PortMappings": [
+              {
+                "ContainerPort": 8080,
+                "HostPort": 80
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "CheckoutComponentEcsServiceRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "ecs.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Path": "/",
+        "Policies": [
+          {
+            "PolicyName": "CheckoutComponentEcsServiceRolePolicy",
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "elasticloadbalancing:DeregisterInstancesFromLoadBalancer",
+                    "elasticloadbalancing:DeregisterTargets",
+                    "elasticloadbalancing:Describe*",
+                    "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
+                    "elasticloadbalancing:RegisterTargets",
+                    "ec2:Describe*",
+                    "ec2:AuthorizeSecurityGroupIngress"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "CheckoutComponentEc2Role": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "ec2.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Path": "/",
+        "Policies": [
+          {
+            "PolicyName": "CheckoutComponentEc2RoleEcsServicePolicy",
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecs:CreateCluster",
+                    "ecs:DeregisterContainerInstance",
+                    "ecs:DiscoverPollEndpoint",
+                    "ecs:Poll",
+                    "ecs:RegisterContainerInstance",
+                    "ecs:StartTelemetrySession",
+                    "ecs:Submit*",
+                    "ecr:GetAuthorizationToken",
+                    "ecr:BatchCheckLayerAvailability",
+                    "ecr:GetDownloadUrlForLayer",
+                    "ecr:GetRepositoryPolicy",
+                    "ecr:DescribeRepositories",
+                    "ecr:ListImages",
+                    "ecr:DescribeImages",
+                    "ecr:BatchGetImage",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "CheckoutComponentEc2InstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [
+          {
+            "Ref": "CheckoutComponentEc2Role"
+          }
+        ]
+      }
+    },
+    "CheckoutComponentEcsAlb": {
+      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "Properties": {
+        "Name": "CheckoutComponentEcsAlb",
+        "Scheme": "internet-facing",
+        "LoadBalancerAttributes": [
+          {
+            "Key": "idle_timeout.timeout_seconds",
+            "Value": "30"
+          }
+        ],
+        "Subnets": [
+          {
+            "Ref": "CheckoutComponentVpcSubnet1"
+          },
+          {
+            "Ref": "CheckoutComponentVpcSubnet2"
+          }
+        ],
+        "SecurityGroups": [
+          {
+            "Ref": "CheckoutComponentEcsSecurityGroup"
+          }
+        ]
+      }
+    },
+    "CheckoutComponentAlbListener": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "DependsOn": "CheckoutComponentEcsServiceRole",
+      "Properties": {
+        "DefaultActions": [
+          {
+            "Type": "forward",
+            "TargetGroupArn": {
+              "Ref": "CheckoutComponentEcsTargetGroup"
+            }
+          }
+        ],
+        "LoadBalancerArn": {
+          "Ref": "CheckoutComponentEcsAlb"
+        },
+        "Port": "80",
+        "Protocol": "HTTP"
+      }
+    },
+    "CheckoutComponentEcsAlbListenerRule": {
+      "Type": "AWS::ElasticLoadBalancingV2::ListenerRule",
+      "DependsOn": "CheckoutComponentAlbListener",
+      "Properties": {
+        "Actions": [
+          {
+            "Type": "forward",
+            "TargetGroupArn": {
+              "Ref": "CheckoutComponentEcsTargetGroup"
+            }
+          }
+        ],
+        "Conditions": [
+          {
+            "Field": "path-pattern",
+            "Values": [
+              "/"
+            ]
+          }
+        ],
+        "ListenerArn": {
+          "Ref": "CheckoutComponentAlbListener"
+        },
+        "Priority": 1
+      }
+    },
+    "CheckoutComponentEcsTargetGroup": {
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "DependsOn": "CheckoutComponentEcsAlb",
+      "Properties": {
+        "HealthCheckIntervalSeconds": 10,
+        "HealthCheckPath": "/shopping/health",
+        "HealthCheckProtocol": "HTTP",
+        "HealthCheckTimeoutSeconds": 5,
+        "HealthyThresholdCount": 2,
+        "Name": "CheckoutComponentEcsTargetGroup",
+        "Port": 80,
+        "Protocol": "HTTP",
+        "UnhealthyThresholdCount": 2,
+        "VpcId": {
+          "Ref": "CheckoutComponentVpc"
+        }
+      }
+    },
+    "CheckoutComponentEcsAutoScalingGroup": {
+      "Type": "AWS::AutoScaling::AutoScalingGroup",
+      "Properties": {
+        "VPCZoneIdentifier": [
+          {
+            "Ref": "CheckoutComponentVpcSubnet1"
+          },
+          {
+            "Ref": "CheckoutComponentVpcSubnet2"
+          }
+        ],
+        "LaunchConfigurationName": {
+          "Ref": "CheckoutComponentContainerInstancesLaunchConfiguration"
+        },
+        "MinSize": "1",
+        "MaxSize": {
+          "Ref": "MaxSize"
+        },
+        "DesiredCapacity": {
+          "Ref": "DesiredCapacity"
+        }
+      },
+      "CreationPolicy": {
+        "ResourceSignal": {
+          "Timeout": "PT5M"
+        }
+      },
+      "UpdatePolicy": {
+        "AutoScalingReplacingUpdate": {
+          "WillReplace": "true"
+        }
+      }
+    },
+    "CheckoutComponentContainerInstancesLaunchConfiguration": {
+      "Type": "AWS::AutoScaling::LaunchConfiguration",
+      "Properties": {
+        "ImageId": {
+          "Fn::FindInMap": [
+            "AWSRegionToAMI",
+            {
+              "Ref": "AWS::Region"
+            },
+            "AMIID"
+          ]
+        },
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#!/bin/bash -xe\n",
+                "echo ECS_CLUSTER=",
+                {
+                  "Ref": "CheckoutComponentEcsCluster"
+                },
+                " >> /etc/ecs/ecs.config\n",
+                "yum update -y\n",
+                "yum install -y aws-cfn-bootstrap\n",
+                "/opt/aws/bin/cfn-signal -e $? ",
+                "         --stack ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                "         --resource CheckoutComponentEcsAutoScalingGroup ",
+                "         --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n"
+              ]
+            ]
+          }
+        },
+        "SecurityGroups": [
+          {
+            "Ref": "CheckoutComponentEcsSecurityGroup"
+          }
+        ],
+        "InstanceType": {
+          "Ref": "InstanceType"
+        },
+        "IamInstanceProfile": {
+          "Ref": "CheckoutComponentEc2InstanceProfile"
+        },
+        "KeyName": {
+          "Ref": "KeyName"
+        }
+      }
+    },
+    "CheckoutComponentEcsService": {
+      "Type": "AWS::ECS::Service",
+      "DependsOn": "CheckoutComponentAlbListener",
+      "Properties": {
+        "Cluster": {
+          "Ref": "CheckoutComponentEcsCluster"
+        },
+        "DesiredCount": "1",
+        "LoadBalancers": [
+          {
+            "ContainerName": "checkout-component-app",
+            "ContainerPort": "8080",
+            "TargetGroupArn": {
+              "Ref": "CheckoutComponentEcsTargetGroup"
+            }
+          }
+        ],
+        "Role": {
+          "Ref": "CheckoutComponentEcsServiceRole"
+        },
+        "TaskDefinition": {
+          "Ref": "CheckoutComponentTaskDefinition"
+        }
+      }
+    },
+    "CheckoutComponentServiceScalingTarget": {
+      "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+      "DependsOn": "CheckoutComponentEcsService",
+      "Properties": {
+        "MaxCapacity": 2,
+        "MinCapacity": 1,
+        "ResourceId": {
+          "Fn::Join": [
+            "",
+            [
+              "service/",
+              {
+                "Ref": "CheckoutComponentEcsCluster"
+              },
+              "/",
+              {
+                "Fn::GetAtt": [
+                  "CheckoutComponentEcsService",
+                  "Name"
+                ]
+              }
+            ]
+          ]
+        },
+        "RoleARN": {
+          "Fn::GetAtt": [
+            "CheckoutComponentAutoscalingRole",
+            "Arn"
+          ]
+        },
+        "ScalableDimension": "ecs:service:DesiredCount",
+        "ServiceNamespace": "ecs"
+      }
+    },
+    "CheckoutComponentServiceScalingPolicy": {
+      "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+      "Properties": {
+        "PolicyName": "CheckoutComponentStepPolicy",
+        "PolicyType": "StepScaling",
+        "ScalingTargetId": {
+          "Ref": "CheckoutComponentServiceScalingTarget"
+        },
+        "StepScalingPolicyConfiguration": {
+          "AdjustmentType": "PercentChangeInCapacity",
+          "Cooldown": 60,
+          "MetricAggregationType": "Average",
+          "StepAdjustments": [
+            {
+              "MetricIntervalLowerBound": 0,
+              "ScalingAdjustment": 200
+            }
+          ]
+        }
+      }
+    },
+    "CheckoutComponentAlbScaleUpAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "EvaluationPeriods": "1",
+        "Statistic": "Average",
+        "Threshold": "85",
+        "Period": "60",
+        "AlarmActions": [
+          {
+            "Ref": "CheckoutComponentServiceScalingPolicy"
+          }
+        ],
+        "Namespace": "AWS/ApplicationELB",
+        "Dimensions": [
+          {
+            "Name": "LoadBalancer",
+            "Value": {
+              "Fn::GetAtt": [
+                "CheckoutComponentEcsAlb",
+                "LoadBalancerFullName"
+              ]
+            }
+          }
+        ],
+        "ComparisonOperator": "GreaterThanThreshold",
+        "MetricName": "CPUUtilization"
+      }
+    },
+    "CheckoutComponentAutoscalingRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "application-autoscaling.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Path": "/",
+        "Policies": [
+          {
+            "PolicyName": "service-autoscaling",
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "application-autoscaling:*",
+                    "cloudwatch:DescribeAlarms",
+                    "cloudwatch:PutMetricAlarm",
+                    "ecs:DescribeServices",
+                    "ecs:UpdateService"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "EcsCluster": {
+      "Value": {
+        "Ref": "CheckoutComponentEcsCluster"
+      }
+    },
+    "TaskDefinition": {
+      "Value": {
+        "Ref": "CheckoutComponentTaskDefinition"
+      }
+    }
+  }
+}
